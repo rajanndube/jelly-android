@@ -74,7 +74,11 @@ object SemanticsCapture {
 
         val displayName = buildDisplayName(role, text ?: inferredLabel, contentDescription, testTag)
 
-        val sourceInfo = compositionInspector?.lookup(rootView, pointInRoot)
+        // Prefer the compiler-plugin-injected source (reliable, runtime-stable).
+        // Fall back to the ui-tooling-data inspector (best-effort, version-fragile).
+        val pluginSource = nearestSourceInfo(hit)
+        val inspectorInfo = compositionInspector?.lookup(rootView, pointInRoot)
+        val sourceFile = pluginSource?.formatted() ?: inspectorInfo?.sourceFile
 
         return CapturedElement(
             displayName = displayName,
@@ -87,9 +91,24 @@ object SemanticsCapture {
             bounds = hit.boundsInRoot,
             nearbyElements = collectNearby(hit),
             nearbyText = collectNearbyText(hit),
-            composableName = sourceInfo?.composableName,
-            sourceFile = sourceInfo?.sourceFile,
+            composableName = inspectorInfo?.composableName,
+            sourceFile = sourceFile,
         )
+    }
+
+    /**
+     * Walks the hit node and its ancestors looking for the closest
+     * AgentationSourceKey. We pick the deepest tagged ancestor — that's
+     * usually the actual `@Composable` function that contains the element.
+     */
+    private fun nearestSourceInfo(node: SemanticsNode): SourceInfo? {
+        var current: SemanticsNode? = node
+        while (current != null) {
+            val info = current.config.getOrNull(AgentationSourceKey)
+            if (info != null) return info
+            current = current.parent
+        }
+        return null
     }
 
     @OptIn(InternalComposeUiApi::class)

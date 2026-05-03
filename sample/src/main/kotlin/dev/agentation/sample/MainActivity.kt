@@ -29,6 +29,7 @@ import androidx.compose.ui.semantics.testTag
 import androidx.compose.ui.unit.dp
 import dev.agentation.Agentation
 import dev.agentation.AgentationConfig
+import dev.agentation.capture.agentationSource
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -48,8 +49,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DemoScreen() {
     var name by remember { mutableStateOf("") }
+    // Tag the screen root with its source location. Annotations on any
+    // descendant element fall back to this tag if no closer one is set.
     Column(
         modifier = Modifier
+            .agentationSource("MainActivity.kt", 49)
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -64,7 +68,9 @@ private fun DemoScreen() {
             style = MaterialTheme.typography.bodyMedium,
         )
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        // Tagging the Card means any annotation on a descendant (text field,
+        // submit button, etc.) reports the form's source location.
+        Card(modifier = Modifier.agentationSource("MainActivity.kt", 70).fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Login form", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
@@ -89,7 +95,7 @@ private fun DemoScreen() {
             }
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
+        Card(modifier = Modifier.agentationSource("MainActivity.kt", 95).fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Settings", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(8.dp))

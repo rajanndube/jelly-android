@@ -254,8 +254,8 @@ internal fun AgentationChip(
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val containerColor = if (selected) accent.copy(alpha = 0.12f) else Color.Transparent
-    val borderColor = if (selected) accent else MaterialTheme.colorScheme.outlineVariant
+    val containerColor = if (selected) accent.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant
+    val borderColor = if (selected) accent else MaterialTheme.colorScheme.outline
     val textColor = if (selected) accent else MaterialTheme.colorScheme.onSurface
     val borderWidth = if (selected) 1.5.dp else 1.dp
 
@@ -283,7 +283,8 @@ internal fun AgentationChip(
 @Composable
 internal fun PrimaryButton(label: String, accent: Color, enabled: Boolean, onClick: () -> Unit) {
     val interactionSource = remember { MutableInteractionSource() }
-    val container = if (enabled) accent else accent.copy(alpha = 0.4f)
+    val container = if (enabled) accent else MaterialTheme.colorScheme.surfaceVariant
+    val labelColor = if (enabled) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     Box(
         modifier = Modifier
             .pressScale(interactionSource, pressedScale = 0.96f)
@@ -299,7 +300,7 @@ internal fun PrimaryButton(label: String, accent: Color, enabled: Boolean, onCli
     ) {
         Text(
             text = label,
-            color = Color.White,
+            color = labelColor,
             fontWeight = FontWeight.SemiBold,
             style = MaterialTheme.typography.labelLarge,
         )

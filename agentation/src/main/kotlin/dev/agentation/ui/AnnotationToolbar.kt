@@ -77,7 +77,7 @@ fun AnnotationToolbar(
                 easing = AgentationMotion.EaseOut,
             ),
         ),
-        shape = RoundedCornerShape(24.dp),
+        shape = RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.surface,
         // Soft shadow — on dark theme the dark surface against the host
         // already provides enough separation; we just want a hint of lift.
