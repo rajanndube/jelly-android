@@ -49,11 +49,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun DemoScreen() {
     var name by remember { mutableStateOf("") }
-    // Tag the screen root with its source location. Annotations on any
-    // descendant element fall back to this tag if no closer one is set.
+    // No manual source tagging — the SDK auto-detects MainActivity.kt
+    // from the host call stack. Demo of the manual override is on the
+    // Login form Card below, which would report `LoginForm.kt` instead
+    // of `MainActivity.kt` for any annotation captured inside it.
     Column(
         modifier = Modifier
-            .agentationSource("MainActivity.kt", 49)
             .fillMaxSize()
             .padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -68,9 +69,10 @@ private fun DemoScreen() {
             style = MaterialTheme.typography.bodyMedium,
         )
 
-        // Tagging the Card means any annotation on a descendant (text field,
-        // submit button, etc.) reports the form's source location.
-        Card(modifier = Modifier.agentationSource("MainActivity.kt", 70).fillMaxWidth()) {
+        // Manual override demo — annotations inside this card report
+        // "LoginForm.kt:1" instead of inheriting MainActivity.kt from
+        // the auto-detected host source.
+        Card(modifier = Modifier.agentationSource("LoginForm.kt", 1).fillMaxWidth()) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text("Login form", style = MaterialTheme.typography.titleMedium)
                 Spacer(Modifier.height(12.dp))
@@ -95,13 +97,18 @@ private fun DemoScreen() {
             }
         }
 
-        Card(modifier = Modifier.agentationSource("MainActivity.kt", 95).fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text("Settings", style = MaterialTheme.typography.titleMedium)
-                Spacer(Modifier.height(8.dp))
-                Text("Notifications: On", style = MaterialTheme.typography.bodyMedium)
-                Text("Sync over Wi-Fi only", style = MaterialTheme.typography.bodyMedium)
-            }
+        SettingsPanel()
+    }
+}
+
+@Composable
+private fun SettingsPanel(modifier: Modifier = Modifier) {
+    Card(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("Settings", style = MaterialTheme.typography.titleMedium)
+            Spacer(Modifier.height(8.dp))
+            Text("Notifications: On", style = MaterialTheme.typography.bodyMedium)
+            Text("Sync over Wi-Fi only", style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

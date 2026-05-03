@@ -17,5 +17,3 @@ dependencyResolutionManagement {
 rootProject.name = "agentation-android"
 include(":agentation")
 include(":sample")
-include(":compiler-plugin")
-include(":gradle-plugin")

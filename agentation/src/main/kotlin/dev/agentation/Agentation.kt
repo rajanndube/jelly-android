@@ -40,6 +40,7 @@ import dev.agentation.capture.BakedImage
 import dev.agentation.capture.CapturedElement
 import dev.agentation.capture.Screenshot
 import dev.agentation.capture.SemanticsCapture
+import dev.agentation.capture.detectHostSource
 import dev.agentation.capture.resolveCompositionInspector
 import dev.agentation.model.Annotation
 import dev.agentation.model.BoundingBox
@@ -111,6 +112,12 @@ fun Agentation(
     var settingsOpen by remember { mutableStateOf(false) }
     var reviewOpen by remember { mutableStateOf(false) }
     var activeSessionId by remember { mutableStateOf(config.sessionId) }
+    // Stack-walk the host's call site once at first composition. This becomes
+    // the fallback `Source:` for every annotation captured here, so apps get
+    // automatic source attribution without per-screen plumbing. Manual
+    // `Modifier.agentationSource(...)` tags on individual composables override
+    // this when they're closer in the semantics tree.
+    val hostSource = remember { detectHostSource() }
     // While true, suppress the toolbar / markers / modal tint so they're not
     // baked into the screenshot. Recomposition + a two-frame wait flushes the
     // hidden state to the platform surface before PixelCopy reads it.
@@ -166,6 +173,7 @@ fun Agentation(
                                 rootView = view,
                                 pointInRoot = currentPos,
                                 compositionInspector = resolveCompositionInspector(),
+                                hostSource = hostSource,
                             )
                             liveHover = hover
                             // Track the last bounds we vibrated for so the tick

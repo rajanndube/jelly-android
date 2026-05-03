@@ -24,17 +24,52 @@ val AgentationSourceKey: SemanticsPropertyKey<SourceInfo> =
 var SemanticsPropertyReceiver.agentationSource: SourceInfo by AgentationSourceKey
 
 /**
- * Tags the composable with a source location. The compiler plugin injects
- * this call automatically into every `@Composable` function in the host
- * app's source set. Apps can also call it manually:
+ * Tags a composable with a source location. Most apps don't need to call
+ * this — the SDK automatically infers the host activity's source via stack
+ * inspection at first composition (see `detectHostSource()`). Use it
+ * manually when you want screen-level precision instead of activity-level:
  *
  * ```
  * @Composable
- * fun MyScreen() {
- *     Column(Modifier.agentationSource("MyScreen.kt", 42)) { ... }
+ * fun LoginScreen() {
+ *     Column(Modifier.agentationSource("LoginScreen.kt", 42)) { ... }
  * }
  * ```
+ *
+ * SemanticsCapture walks the hit node's ancestors looking for the closest
+ * tag, so tagging the screen root is enough — every annotation inside it
+ * inherits.
  */
 @Stable
 fun Modifier.agentationSource(file: String, line: Int): Modifier =
     this.semantics { agentationSource = SourceInfo(file, line) }
+
+/**
+ * Walks the current thread's stack looking for the first frame outside
+ * Agentation, Compose, and Kotlin/Java internals — that's the host app's
+ * `setContent { }` site (or wherever `Agentation { }` was wrapped).
+ *
+ * Used as a fallback Source when no `Modifier.agentationSource()` tag is
+ * found in the semantics tree. Result: every annotation gets a meaningful
+ * `Source: MainActivity.kt:36` automatically, without per-screen plumbing.
+ *
+ * Returns null when called outside a meaningful host stack (e.g. from a
+ * background thread) or when filenames are stripped by R8 — caller should
+ * gracefully fall back to no source line in that case.
+ */
+fun detectHostSource(): SourceInfo? = runCatching {
+    Throwable().stackTrace.firstOrNull { frame ->
+        val cls = frame.className
+        val file = frame.fileName
+        file != null &&
+            !cls.startsWith("dev.agentation.") &&
+            !cls.startsWith("androidx.compose.") &&
+            !cls.startsWith("androidx.activity.") &&
+            !cls.startsWith("androidx.lifecycle.") &&
+            !cls.startsWith("kotlin.") &&
+            !cls.startsWith("kotlinx.") &&
+            !cls.startsWith("java.") &&
+            !cls.startsWith("jdk.") &&
+            !cls.startsWith("sun.")
+    }?.let { SourceInfo(it.fileName!!, it.lineNumber.coerceAtLeast(0)) }
+}.getOrNull()

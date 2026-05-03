@@ -37,6 +37,12 @@ object SemanticsCapture {
          */
         pointInRoot: Offset,
         compositionInspector: CompositionInspector? = null,
+        /**
+         * Activity-level source captured by the host SDK at first composition.
+         * Used as a fallback when no closer `Modifier.agentationSource()` tag
+         * is found in the semantics tree. See `detectHostSource()`.
+         */
+        hostSource: SourceInfo? = null,
     ): CapturedElement? {
         val owner = findSemanticsOwner(rootView) ?: return null
 
@@ -74,11 +80,17 @@ object SemanticsCapture {
 
         val displayName = buildDisplayName(role, text ?: inferredLabel, contentDescription, testTag)
 
-        // Prefer the compiler-plugin-injected source (reliable, runtime-stable).
-        // Fall back to the ui-tooling-data inspector (best-effort, version-fragile).
+        // Source resolution priority:
+        //   1. Manual `Modifier.agentationSource(...)` on the hit node or any
+        //      ancestor — most precise, dev-controlled.
+        //   2. ui-tooling-data inspector — best-effort reflective lookup, may
+        //      fail silently across Compose UI versions.
+        //   3. Host activity stack-walk — always available, activity-level.
         val pluginSource = nearestSourceInfo(hit)
         val inspectorInfo = compositionInspector?.lookup(rootView, pointInRoot)
-        val sourceFile = pluginSource?.formatted() ?: inspectorInfo?.sourceFile
+        val sourceFile = pluginSource?.formatted()
+            ?: inspectorInfo?.sourceFile
+            ?: hostSource?.formatted()
 
         return CapturedElement(
             displayName = displayName,
