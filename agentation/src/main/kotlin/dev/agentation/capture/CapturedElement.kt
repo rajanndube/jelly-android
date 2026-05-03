@@ -21,10 +21,19 @@ data class CapturedElement(
     val text: String? = null,
     val testTag: String? = null,
     val stateDescription: String? = null,
-    val boundsInWindow: Rect,
+    /**
+     * Element bounds in the AndroidComposeView's *root* coordinate space —
+     * i.e., the same space pointer events arrive in and the same space the
+     * captured bitmap uses. This makes the live preview, the hit-test, and the
+     * baked stroke rectangle all align without per-call coord conversion.
+     */
+    val bounds: Rect,
 
     /** Concise sibling identifiers, parity with `getNearbyElements`. */
     val nearbyElements: String? = null,
+
+    /** Readable text content of sibling elements, parity with `getNearbyText`. */
+    val nearbyText: String? = null,
 
     /** Composable function name + source, debug builds with ui-tooling-data only. */
     val composableName: String? = null,

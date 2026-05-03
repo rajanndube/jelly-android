@@ -9,38 +9,68 @@ import android.os.HandlerThread
 import android.view.PixelCopy
 import android.view.View
 import android.view.Window
-import androidx.compose.ui.geometry.Rect as ComposeRect
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
-import kotlin.math.max
-import kotlin.math.min
 
 /**
- * Captures a region of the host Window as a WEBP_LOSSY file in cacheDir.
+ * Captures the host Window as a WEBP_LOSSY file in cacheDir.
  *
  * Returns the absolute file path on success, null otherwise. Falls back to
  * `View.draw(Canvas)` on devices/contexts where PixelCopy isn't available.
+ *
+ * The default capture is full-window so the review screen can show context
+ * around the selected element (drawn as a stroke rectangle on top), instead
+ * of just the cropped region. WEBP at ~80% quality keeps storage at
+ * ~100-200KB per annotation.
  */
 object Screenshot {
 
-    suspend fun captureRegion(
+    /**
+     * Captures the Compose root view's region (not the full window). The
+     * resulting bitmap shares the same coordinate space as `boundsInRoot`
+     * and `pointerInput` positions, so a stroke rectangle drawn at those
+     * bounds aligns precisely on top of the captured element.
+     */
+    suspend fun captureFullWindow(
         context: Context,
         window: Window?,
         rootView: View,
-        regionInWindow: ComposeRect,
         annotationId: String,
     ): String? {
-        val src = clamp(regionInWindow, rootView)
-        if (src.width() <= 0 || src.height() <= 0) return null
+        val viewLocation = IntArray(2).also { rootView.getLocationInWindow(it) }
+        return captureRegion(
+            context = context,
+            window = window,
+            rootView = rootView,
+            srcInWindow = Rect(
+                viewLocation[0],
+                viewLocation[1],
+                viewLocation[0] + rootView.width,
+                viewLocation[1] + rootView.height,
+            ),
+            annotationId = annotationId,
+        )
+    }
 
-        val bitmap = Bitmap.createBitmap(src.width(), src.height(), Bitmap.Config.ARGB_8888)
+    private suspend fun captureRegion(
+        context: Context,
+        window: Window?,
+        rootView: View,
+        srcInWindow: Rect,
+        annotationId: String,
+    ): String? {
+        val w = (srcInWindow.right - srcInWindow.left).coerceAtLeast(0)
+        val h = (srcInWindow.bottom - srcInWindow.top).coerceAtLeast(0)
+        if (w <= 0 || h <= 0) return null
+
+        val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
 
         val ok = if (window != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            pixelCopy(window, src, bitmap)
+            pixelCopy(window, srcInWindow, bitmap)
         } else {
-            drawFallback(rootView, src, bitmap)
+            drawFallback(rootView, bitmap)
         }
 
         if (!ok) {
@@ -61,14 +91,6 @@ object Screenshot {
         }.getOrNull()
     }
 
-    private fun clamp(rect: ComposeRect, view: View): Rect {
-        val l = max(0, rect.left.toInt())
-        val t = max(0, rect.top.toInt())
-        val r = min(view.width, rect.right.toInt())
-        val b = min(view.height, rect.bottom.toInt())
-        return Rect(l, t, r, b)
-    }
-
     private suspend fun pixelCopy(window: Window, src: Rect, dest: Bitmap): Boolean =
         suspendCoroutine { cont ->
             val thread = HandlerThread("agentation-pixelcopy").apply { start() }
@@ -84,9 +106,8 @@ object Screenshot {
             }
         }
 
-    private fun drawFallback(view: View, src: Rect, dest: Bitmap): Boolean = runCatching {
+    private fun drawFallback(view: View, dest: Bitmap): Boolean = runCatching {
         val canvas = android.graphics.Canvas(dest)
-        canvas.translate(-src.left.toFloat(), -src.top.toFloat())
         view.draw(canvas)
         true
     }.getOrDefault(false)

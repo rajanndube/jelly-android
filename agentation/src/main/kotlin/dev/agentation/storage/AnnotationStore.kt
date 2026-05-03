@@ -3,15 +3,12 @@ package dev.agentation.storage
 import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
-import androidx.datastore.preferences.preferencesDataStore
 import dev.agentation.model.Annotation
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-
-private val Context.dataStore by preferencesDataStore(name = "agentation")
 
 /**
  * Persists annotations per screen with 7-day expiry, mirroring

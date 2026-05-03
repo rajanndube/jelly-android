@@ -92,7 +92,7 @@ class OutputGenerator(
                     a.nearbyElements?.let { sb.append("**Nearby Elements:** ").append(it).append("\n") }
                     a.sourceFile?.let { sb.append("**Source:** ").append(it).append("\n") }
                     a.composableHierarchy?.let { sb.append("**Composables:** ").append(it).append("\n") }
-                    a.screenshotPath?.let { sb.append("**Screenshot:** ").append(it).append("\n") }
+                    if (a.screenshotPath != null) sb.append("**Screenshot:** [attached]\n")
                     sb.append("**Feedback:** ").append(a.comment).append("\n\n")
                 }
 
@@ -102,6 +102,11 @@ class OutputGenerator(
                     a.sourceFile?.let { sb.append("**Source:** ").append(it).append("\n") }
                     a.composableHierarchy?.let { sb.append("**Composables:** ").append(it).append("\n") }
                     if (detailLevel == DetailLevel.Detailed) {
+                        // Accessibility (role / contentDescription / testTag) is
+                        // the Android-native equivalent of the web's CSS classes
+                        // for "what is this element semantically". Show it in
+                        // Detailed so the level has substance beyond just Position.
+                        a.accessibility?.let { sb.append("**Accessibility:** ").append(it).append("\n") }
                         a.cssClasses?.let { sb.append("**Classes:** ").append(it).append("\n") }
                         a.boundingBox?.let {
                             sb.append("**Position:** ").append(it.x.roundToInt())
@@ -110,12 +115,10 @@ class OutputGenerator(
                                 .append("×").append(it.height.roundToInt())
                                 .append("px)\n")
                         }
+                        a.nearbyText?.let { sb.append("**Context:** ").append(it.take(100)).append("\n") }
                     }
                     a.selectedText?.let { sb.append("**Selected text:** \"").append(it).append("\"\n") }
-                    if (detailLevel == DetailLevel.Detailed && a.nearbyText != null && a.selectedText == null) {
-                        sb.append("**Context:** ").append(a.nearbyText.take(100)).append("\n")
-                    }
-                    a.screenshotPath?.let { sb.append("**Screenshot:** ").append(it).append("\n") }
+                    if (a.screenshotPath != null) sb.append("**Screenshot:** [attached]\n")
                     sb.append("**Feedback:** ").append(a.comment).append("\n\n")
                 }
             }

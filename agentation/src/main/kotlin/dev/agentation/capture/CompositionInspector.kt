@@ -29,10 +29,14 @@ internal object NoopCompositionInspector : CompositionInspector {
 }
 
 /**
- * Returns a debug inspector via reflection if `ui-tooling-data` is on the
- * classpath, otherwise the no-op. Reflection lets us avoid a hard compile-time
- * dependency on a deliberately-unstable artifact.
- *
- * Wire-up for v0.4. For now always returns the no-op.
+ * Returns a debug inspector via reflection if `CompositionInspectorDebug` is on
+ * the classpath (debug builds only), otherwise the no-op. Reflection lets the
+ * release variant avoid any reference to ui-tooling-data which is deliberately
+ * unstable across Compose UI versions.
  */
-fun resolveCompositionInspector(): CompositionInspector = NoopCompositionInspector
+fun resolveCompositionInspector(): CompositionInspector {
+    return runCatching {
+        val cls = Class.forName("dev.agentation.capture.CompositionInspectorDebug")
+        cls.getDeclaredConstructor().newInstance() as CompositionInspector
+    }.getOrDefault(NoopCompositionInspector)
+}
