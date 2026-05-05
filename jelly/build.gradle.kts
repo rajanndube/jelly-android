@@ -1,14 +1,17 @@
+import com.vanniktech.maven.publish.AndroidSingleVariantLibrary
+import com.vanniktech.maven.publish.SonatypeHost
+
 plugins {
     alias(libs.plugins.android.library)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
-    `maven-publish`
+    alias(libs.plugins.maven.publish)
 }
 
 // Module coordinates so consumers can resolve the artifact as
-// `dev.jelly:jelly:<version>` from mavenLocal, an internal repo, or a
-// public Maven host.
+// `dev.jelly:jelly:<version>` from Maven Central, mavenLocal, or any
+// composite build.
 group = "dev.jelly"
 version = "0.1.0"
 
@@ -62,16 +65,6 @@ android {
             kotlin.srcDir("src/main/kotlin")
         }
     }
-
-    // Publish only the `release` variant. AGP packages the .aar plus a
-    // sources jar and (auto-generated empty) javadoc jar suitable for
-    // Maven Central / internal Artifactory uploads.
-    publishing {
-        singleVariant("release") {
-            withSourcesJar()
-            withJavadocJar()
-        }
-    }
 }
 
 dependencies {
@@ -102,88 +95,97 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
-// `afterEvaluate` is required because the Android `release` software
-// component (`components["release"]`) is registered late by AGP — it
-// doesn't exist at the time the top-level publishing { } block would be
-// evaluated.
-afterEvaluate {
-    // GitHub `OWNER/REPO` that hosts the published artifacts. Read from the
-    // `jelly.github.repo` Gradle property (set in gradle.properties or via
-    // -P); also drives the POM `url` / `scm` fields so a single property
-    // controls everything that references the GitHub project.
-    val githubRepo = providers.gradleProperty("jelly.github.repo")
-        .orElse("OWNER/REPO")
-        .get()
-    val githubUrl = "https://github.com/$githubRepo"
+// ─── Maven Central publication ──────────────────────────────────────────
+//
+// Uses the Sonatype Central Portal (the post-March-2024 system that
+// replaced OSSRH). The vanniktech plugin handles:
+//   • bundling the .aar + sources + javadoc + .module + .pom
+//   • GPG signing every artifact (Central rejects unsigned uploads)
+//   • uploading to https://central.sonatype.com via the Portal API
+//
+// Required Gradle properties (set in `~/.gradle/gradle.properties` or via
+// env vars — see gradle.properties at the project root for the full list):
+//   • mavenCentralUsername / mavenCentralPassword — Sonatype Central token
+//   • signingInMemoryKey / signingInMemoryKeyPassword — base64 GPG private key
+//
+// The plugin is a no-op for `publishToMavenLocal`, so existing local
+// smoke tests keep working without credentials.
+mavenPublishing {
+    // CENTRAL_PORTAL is the only valid host for namespaces registered after
+    // March 2024. `automaticRelease = false` keeps the first publish in
+    // staging so it can be reviewed in the UI; flip to true once the
+    // pipeline is trusted.
+    publishToMavenCentral(SonatypeHost.CENTRAL_PORTAL, automaticRelease = false)
 
-    publishing {
-        publications {
-            create<MavenPublication>("release") {
-                from(components["release"])
+    // Signing is mandatory for Maven Central but a no-op for local
+    // smoke tests — gate it on the GPG key being present so
+    // `publishToMavenLocal` works without credentials. The Central upload
+    // path still rejects unsigned artifacts; the plugin surfaces a clear
+    // "no signatory" error if you try to publish there without keys set.
+    if (providers.gradleProperty("signingInMemoryKey").isPresent) {
+        signAllPublications()
+    }
 
-                groupId = project.group.toString()
-                artifactId = "jelly"
-                version = project.version.toString()
+    coordinates(
+        groupId = project.group.toString(),
+        artifactId = "jelly",
+        version = project.version.toString(),
+    )
 
-                pom {
-                    name.set("Jelly Android")
-                    description.set(
-                        "QA-annotation toolbar for Android Compose apps. " +
-                            "Long-press any element to capture a comment, " +
-                            "screenshot, and structured markdown for AI " +
-                            "coding agents.",
-                    )
-                    url.set(githubUrl)
-                    licenses {
-                        license {
-                            name.set("Apache License, Version 2.0")
-                            url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
-                            distribution.set("repo")
-                        }
-                    }
-                    developers {
-                        developer {
-                            id.set("jelly")
-                            name.set("Jelly")
-                        }
-                    }
-                    scm {
-                        connection.set("scm:git:git://github.com/$githubRepo.git")
-                        developerConnection.set("scm:git:ssh://git@github.com/$githubRepo.git")
-                        url.set(githubUrl)
-                    }
-                }
+    // Single-variant publication with sources and javadoc jars. AGP
+    // generates an empty javadoc jar by default; the plugin's Dokka
+    // integration can replace it later if richer API docs are desired.
+    configure(
+        AndroidSingleVariantLibrary(
+            variant = "release",
+            sourcesJar = true,
+            publishJavadocJar = true,
+        ),
+    )
+
+    pom {
+        name.set("Jelly Android")
+        description.set(
+            "QA-annotation toolbar for Android Compose apps. " +
+                "Long-press any element to capture a comment, screenshot, " +
+                "and structured markdown for AI coding agents.",
+        )
+        inceptionYear.set("2026")
+
+        // Central Portal validates that POM url + scm + at least one
+        // license + at least one developer are present and non-empty.
+        // Read the GitHub OWNER/REPO from a Gradle property so a single
+        // value drives every external link.
+        val githubRepo = providers.gradleProperty("jelly.github.repo")
+            .orElse("OWNER/REPO")
+            .get()
+        val githubUrl = "https://github.com/$githubRepo"
+        url.set(githubUrl)
+
+        licenses {
+            license {
+                name.set("Apache License, Version 2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                distribution.set("repo")
             }
         }
-
-        repositories {
-            // Local smoke test target: `./gradlew :jelly:publishToMavenLocal`.
-            mavenLocal()
-
-            // GitHub Packages — the canonical publish target. Credentials are
-            // resolved in this order:
-            //   1. Gradle properties `gpr.user` / `gpr.token` (e.g. set in
-            //      `~/.gradle/gradle.properties` for local publishes — keeps
-            //      tokens out of the repo).
-            //   2. Env vars `GITHUB_ACTOR` / `GITHUB_TOKEN` (the standard
-            //      names GitHub Actions exposes; CI publishes need no extra
-            //      config).
-            //
-            // The PAT must have `write:packages` (and `repo` for private
-            // repositories). Consumers fetching the artifact need a PAT
-            // with `read:packages`.
-            maven {
-                name = "GitHubPackages"
-                url = uri("https://maven.pkg.github.com/$githubRepo")
-                credentials {
-                    username = providers.gradleProperty("gpr.user").orNull
-                        ?: System.getenv("GITHUB_ACTOR")
-                                ?: ""
-                    password = providers.gradleProperty("gpr.token").orNull
-                        ?: System.getenv("GITHUB_TOKEN")
-                                ?: ""
-                }
+        developers {
+            developer {
+                id.set(
+                    providers.gradleProperty("jelly.developer.id").orElse("jelly").get(),
+                )
+                name.set(
+                    providers.gradleProperty("jelly.developer.name").orElse("Jelly").get(),
+                )
+                email.set(
+                    providers.gradleProperty("jelly.developer.email").orElse("").get(),
+                )
             }
+        }
+        scm {
+            connection.set("scm:git:git://github.com/$githubRepo.git")
+            developerConnection.set("scm:git:ssh://git@github.com/$githubRepo.git")
+            url.set(githubUrl)
         }
     }
 }

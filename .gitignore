@@ -8,3 +8,10 @@ captures/
 .kotlin/
 *.hprof
 .DS_Store
+
+# Secrets — never commit
+gradle.properties.local
+secrets.properties
+*.gpg
+*.asc
+*.kbx
