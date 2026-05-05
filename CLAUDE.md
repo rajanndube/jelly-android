@@ -1,8 +1,6 @@
-# Agentation Android (Kotlin Compose port)
+# Jelly Android (Kotlin Compose port)
 
-Standalone Android Gradle project — sibling to the web monorepo at `../agentation`. Ports the Agentation toolbar to native Kotlin Compose so QA can long-press any UI element in an Android app, capture structured feedback, and hand it to AI coding agents in the same markdown format the web version produces.
-
-v0.1 was scaffolded inside `../agentation/android/` for session continuity; this is the extracted standalone repo. Status as of extraction: v0.1 MVP code complete, `:agentation:assembleDebug` and `:sample:assembleDebug` both green.
+Standalone Android Gradle project. Ports the Jelly QA toolbar to native Kotlin Compose so QA can long-press any UI element in an Android app, capture structured feedback, and hand it to AI coding agents as markdown + a baked image. Status: v0.6 — `:jelly:assembleDebug` + `:sample:assembleDebug` green. The output markdown contract is shared with the web `agentation` SDK (separate Next.js codebase) so the same downstream agents work for both clients.
 
 ## What this is
 
@@ -14,45 +12,45 @@ The markdown contract is shared with the web version (`package/src/utils/generat
 
 ```kotlin
 setContent {
-    Agentation(config = AgentationConfig(endpoint = MCP_URL)) {
+    Jelly(config = JellyConfig(endpoint = MCP_URL)) {
         MyAppRoot()  // existing app code unchanged
     }
 }
 ```
 
-Add `qaImplementation("dev.agentation:agentation-android:0.1.0")` to gate it to QA builds. No per-screen `Modifier.testTag` plumbing required — the library hits the semantics tree at long-press time.
+Add `debugImplementation("dev.jelly:jelly:0.1.0")` (or `qaImplementation` for a QA flavor) to gate it to non-release builds. No per-screen `Modifier.testTag` plumbing required — the library hits the semantics tree at long-press time.
 
 ## Architecture (key files)
 
-- `agentation/src/main/kotlin/dev/agentation/Agentation.kt` — public composable that wraps `content()` and overlays the toolbar. Captures the host source via `detectHostSource()` at first composition.
-- `agentation/.../capture/SemanticsCapture.kt` — long-press hit-test against the unmerged `SemanticsOwner` tree, with live-preview drag and `boundsInRoot`-based coords.
-- `agentation/.../capture/AgentationSourceRegistry.kt` — `Modifier.agentationSource(file, line)` for manual tagging + `detectHostSource()` for automatic activity-level detection via stack walking.
-- `agentation/.../capture/CompositionInspector.kt` — additional fallback via `ui-tooling-data` (best-effort; `agentationSource` takes priority when present, then this, then the auto-detected host source).
-- `agentation/.../capture/BakedImage.kt` — bakes stroke rect + structured caption (Element / Location / Source / Feedback / tags) into the saved image.
-- `agentation/.../output/OutputGenerator.kt` — 1:1 port of the web `generateOutput()` markdown.
-- `agentation/.../storage/AnnotationStore.kt` — DataStore Preferences with 7-day expiry parity.
-- `agentation/.../model/Annotation.kt` — mirrors `package/src/types.ts:5–69`.
-- `agentation/.../theme/AgentationTheme.kt` — internal dark theme (zinc palette) that all SDK overlay UI renders in, regardless of host theme.
+- `jelly/src/main/kotlin/dev/jelly/Jelly.kt` — public composable that wraps `content()` and overlays the toolbar. Captures the host source via `detectHostSource()` at first composition.
+- `jelly/.../capture/SemanticsCapture.kt` — long-press hit-test against the unmerged `SemanticsOwner` tree, with live-preview drag and `boundsInRoot`-based coords.
+- `jelly/.../capture/JellySourceRegistry.kt` — `Modifier.jellySource(file, line)` for manual tagging + `detectHostSource()` for automatic activity-level detection via stack walking.
+- `jelly/.../capture/CompositionInspector.kt` — additional fallback via `ui-tooling-data` (best-effort; `jellySource` takes priority when present, then this, then the auto-detected host source).
+- `jelly/.../capture/BakedImage.kt` — bakes stroke rect + structured caption (Element / Location / Source / Feedback / tags) into the saved image.
+- `jelly/.../output/OutputGenerator.kt` — 1:1 port of the web `generateOutput()` markdown.
+- `jelly/.../storage/AnnotationStore.kt` — DataStore Preferences with 7-day expiry parity.
+- `jelly/.../model/Annotation.kt` — mirrors `package/src/types.ts:5–69`.
+- `jelly/.../theme/JellyTheme.kt` — internal dark theme (zinc palette) that all SDK overlay UI renders in, regardless of host theme.
 - `sample/` — minimal Compose app for live testing, not published.
 
 ## Source location (`Source: Foo.kt:42`)
 
 Three paths populate `Annotation.sourceFile`, in priority order — first non-null wins:
 
-1. **`Modifier.agentationSource("File.kt", 42)`** — manual tag on the screen root or a key composable. Use when you want screen-level precision instead of the activity-level fallback.
+1. **`Modifier.jellySource("File.kt", 42)`** — manual tag on the screen root or a key composable. Use when you want screen-level precision instead of the activity-level fallback.
    ```kotlin
    @Composable
    fun LoginScreen() {
-       Column(Modifier.agentationSource("LoginScreen.kt", 42)) { ... }
+       Column(Modifier.jellySource("LoginScreen.kt", 42)) { ... }
    }
    ```
    `SemanticsCapture` walks the hit node's ancestors for the closest tag — tagging a Card is enough; every annotation inside it inherits.
 
 2. **`CompositionInspector` (ui-tooling-data, debug only)** — reflective slot-tree walk. Best-effort; fragile across Compose UI versions.
 
-3. **`detectHostSource()` — automatic activity-level fallback.** Walks the call stack at first composition of `Agentation { }`, finds the first frame outside `dev.agentation.*` / `androidx.compose.*` / Kotlin/Java internals, returns its `(file, line)`. Result: every annotation gets `Source: MainActivity.kt:36` automatically with zero per-screen tagging.
+3. **`detectHostSource()` — automatic activity-level fallback.** Walks the call stack at first composition of `Jelly { }`, finds the first frame outside `dev.jelly.*` / `androidx.compose.*` / Kotlin/Java internals, returns its `(file, line)`. Result: every annotation gets `Source: MainActivity.kt:36` automatically with zero per-screen tagging.
 
-This combination means **zero integration code is required for source attribution** in the common case — wrap `Agentation { }` and source populates. Devs only reach for `Modifier.agentationSource()` when they want sub-screen precision.
+This combination means **zero integration code is required for source attribution** in the common case — wrap `Jelly { }` and source populates. Devs only reach for `Modifier.jellySource()` when they want sub-screen precision.
 
 ## What ports vs. what doesn't
 
@@ -70,13 +68,13 @@ The full design plan is at `~/.claude/plans/squishy-tinkering-wreath.md`. Read i
 - v0.2 — detail levels, settings sheet, share sheet, region screenshot, accent colors.
 - v0.3 — MCP `/sessions` sync, webhook URL.
 - v0.4 — `ui-tooling-data` for source file:line (best-effort fallback).
-- v0.5 — press-drag-release live preview; haptics; `AgentationTheme` dark UI; `BakedImage` self-contained share artifacts; manual `Modifier.agentationSource()` for screen-level precision; **automatic activity-level Source via `detectHostSource()` stack walk** — zero-config source attribution.
+- v0.5 — press-drag-release live preview; haptics; `JellyTheme` dark UI; `BakedImage` self-contained share artifacts; manual `Modifier.jellySource()` for screen-level precision; **automatic activity-level Source via `detectHostSource()` stack walk** — zero-config source attribution.
 - v0.6+ — `SYSTEM_ALERT_WINDOW` Service for cross-app QA.
 
 ## Build
 
 ```bash
-./gradlew :agentation:assembleDebug          # build library
+./gradlew :jelly:assembleDebug          # build library
 ./gradlew :sample:installDebug               # install demo on connected device
 ```
 
@@ -84,4 +82,4 @@ Or open this folder as a project in Android Studio.
 
 ## Web reference
 
-Cross-references in source code (`package/src/...:NNN`) point at files in the sibling `../agentation` repo. Read those alongside this code when porting new features — the markdown contract and `Annotation` schema are the load-bearing parity points.
+Cross-references in source code (`package/src/...:NNN`) point at files in the sibling `../jelly` repo. Read those alongside this code when porting new features — the markdown contract and `Annotation` schema are the load-bearing parity points.

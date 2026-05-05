@@ -5,13 +5,13 @@ plugins {
 }
 
 android {
-    namespace = "dev.agentation.sample"
-    compileSdk = 34
+    namespace = "dev.jelly.sample"
+    compileSdk = 35
 
     defaultConfig {
-        applicationId = "dev.agentation.sample"
+        applicationId = "dev.jelly.sample"
         minSdk = 26
-        targetSdk = 34
+        targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
     }
@@ -43,7 +43,7 @@ android {
 }
 
 dependencies {
-    implementation(project(":agentation"))
+    implementation(project(":jelly"))
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

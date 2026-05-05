@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <application
-        android:label="Agentation Sample"
-        android:theme="@style/Theme.AgentationSample"
+        android:name=".SampleApp"
+        android:label="Jelly Sample"
+        android:theme="@style/Theme.JellySample"
         android:allowBackup="false">
         <activity
             android:name=".MainActivity"

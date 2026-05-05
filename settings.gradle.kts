@@ -14,6 +14,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "agentation-android"
-include(":agentation")
+rootProject.name = "jelly-android"
+include(":jelly")
 include(":sample")

@@ -1,7 +1,9 @@
 [versions]
-agp = "8.5.2"
-kotlin = "2.0.20"
-compose-bom = "2024.09.02"
+# Aligned with consumers (vance-android) so composite builds resolve without
+# AGP/Kotlin/Compose version conflicts.
+agp = "8.7.0"
+kotlin = "2.1.0"
+compose-bom = "2025.12.00"
 compose-compiler = "1.5.15"
 core-ktx = "1.13.1"
 lifecycle = "2.8.6"
