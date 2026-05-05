@@ -10,9 +10,12 @@ plugins {
 }
 
 // Module coordinates so consumers can resolve the artifact as
-// `dev.jelly:jelly:<version>` from Maven Central, mavenLocal, or any
-// composite build.
-group = "dev.jelly"
+// `com.rajandube:jelly:<version>` from Maven Central, mavenLocal, or any
+// composite build. The Maven groupId is independent of the Android
+// `namespace` / Kotlin package below — keeping `dev.jelly` as the runtime
+// package means consumers' import lines stay short while the Maven
+// coordinate matches the publisher's namespace.
+group = "com.rajandube"
 version = "0.1.0"
 
 android {

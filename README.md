@@ -37,7 +37,7 @@ In the host's root `settings.gradle.kts`, **before** any other `include(":...")`
 ```kotlin
 includeBuild("../jelly-android") {
     dependencySubstitution {
-        substitute(module("dev.jelly:jelly"))
+        substitute(module("com.rajandube:jelly"))
             .using(project(":jelly"))
     }
 }
@@ -51,7 +51,7 @@ In the app module's `build.gradle.kts` (or `<module>.gradle.kts` if the project 
 
 ```kotlin
 dependencies {
-    debugImplementation("dev.jelly:jelly:0.1.0")
+    debugImplementation("com.rajandube:jelly:0.1.0")
 }
 ```
 
@@ -148,7 +148,7 @@ The toolbar appears as a draggable FAB in the bottom-right of every activity.
 7. Type a comment, choose intent / severity, tap Add. A numbered marker appears at the captured spot.
 8. Open the toolbar's review screen → see all annotations with thumbnails. Share → image + markdown go to Slack / wherever.
 
-If the FAB doesn't appear: check that `dev.jelly:jelly` is on the classpath at runtime via
+If the FAB doesn't appear: check that `com.rajandube:jelly` is on the classpath at runtime via
 `./gradlew :app:dependencies --configuration debugRuntimeClasspath | grep jelly`.
 
 ---
