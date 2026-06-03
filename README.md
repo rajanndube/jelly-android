@@ -8,6 +8,8 @@
 
 A debug-only QA-annotation toolbar for Android Compose apps. Long-press any element on screen, drop a comment, and share to Slack, the clipboard, or your MCP server as structured markdown plus a baked image.
 
+Jelly for Android is the native Kotlin / Jetpack Compose member of the Jelly family, alongside the [iOS](https://github.com/rajanndube/jelly-swift) and web SDKs. The output markdown contract and `/sessions` API are byte-identical across all three clients, so the same downstream agents work everywhere.
+
 > **Published on Maven Central:** `com.rajandube:jelly:0.1.0`. [Browse on Sonatype](https://central.sonatype.com/artifact/com.rajandube/jelly) or the [direct repository listing](https://repo1.maven.org/maven2/com/rajandube/jelly/).
 
 ```
