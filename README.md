@@ -1,6 +1,10 @@
 # Jelly for Android
 
 [![Maven Central](https://img.shields.io/maven-central/v/com.rajandube/jelly.svg?label=Maven%20Central&color=blue)](https://central.sonatype.com/artifact/com.rajandube/jelly)
+[![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg)](#prerequisites)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg)](https://kotlinlang.org)
+[![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202025.12-4285F4.svg)](https://developer.android.com/jetpack/compose)
+[![License](https://img.shields.io/github/license/rajanndube/jelly-android)](LICENSE)
 
 A debug-only QA-annotation toolbar for Android Compose apps. Long-press any element on screen, drop a comment, and share to Slack, the clipboard, or your MCP server as structured markdown plus a baked image.
 
@@ -260,14 +264,8 @@ To publish a new version: bump `version` in [`jelly/build.gradle.kts`](jelly/bui
 
 ---
 
-## For agents
-
-The above is the human-readable guide. There is also a self-serve agent skill at `~/.claude/skills/jelly-android/SKILL.md` that gives an LLM-driven Claude Code agent the exhaustive procedure (discovery, version alignment, composite build, smoke test, common errors and fixes, etc.). Useful when you want to ask an agent to do the integration end-to-end.
-
----
-
 ## Status
 
 `v0.6`: Application-level install pattern, draggable FAB with edge-snap, two-window architecture (capture overlay in decor view plus toolbar in `TYPE_APPLICATION_PANEL` window), View and Compose multi-paradigm hit-testing, slot-tree fallback for sparse-semantics apps, baked share images.
 
-See [`CLAUDE.md`](CLAUDE.md) for repo-internal architecture notes and the original design plan at `~/.claude/plans/squishy-tinkering-wreath.md`.
+See [`CLAUDE.md`](CLAUDE.md) for repo-internal architecture notes, and [`CHANGELOG.md`](CHANGELOG.md) for the release history. Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).

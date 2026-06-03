@@ -1,12 +1,12 @@
 # Jelly Android (Kotlin Compose port)
 
-Standalone Android Gradle project. Ports the Jelly QA toolbar to native Kotlin Compose so QA can long-press any UI element in an Android app, capture structured feedback, and hand it to AI coding agents as markdown + a baked image. Status: v0.6 — `:jelly:assembleDebug` + `:sample:assembleDebug` green. The output markdown contract is shared with the web `agentation` SDK (separate Next.js codebase) so the same downstream agents work for both clients.
+Standalone Android Gradle project. Ports the Jelly QA toolbar to native Kotlin Compose so QA can long-press any UI element in an Android app, capture structured feedback, and hand it to AI coding agents as markdown + a baked image. Status: v0.6 — `:jelly:assembleDebug` + `:sample:assembleDebug` green. The output markdown contract is shared with the iOS and web Jelly SDKs so the same downstream agents work across all three clients.
 
 ## What this is
 
 A Compose library that QA/designers wrap around their app's root. Long-press any UI element while annotate-mode is on → the library inspects the runtime semantics tree → a popup captures a comment → output goes to clipboard / share sheet / MCP `/sessions` endpoint as markdown.
 
-The markdown contract is shared with the web version (`package/src/utils/generate-output.ts`) so the same downstream agents work for both.
+The markdown contract is shared with the iOS and web versions so the same downstream agents work for all three.
 
 ## Integration (host app perspective)
 
@@ -27,9 +27,9 @@ Add `debugImplementation("com.rajandube:jelly:0.1.0")` (or `qaImplementation` fo
 - `jelly/.../capture/JellySourceRegistry.kt` — `Modifier.jellySource(file, line)` for manual tagging + `detectHostSource()` for automatic activity-level detection via stack walking.
 - `jelly/.../capture/CompositionInspector.kt` — additional fallback via `ui-tooling-data` (best-effort; `jellySource` takes priority when present, then this, then the auto-detected host source).
 - `jelly/.../capture/BakedImage.kt` — bakes stroke rect + structured caption (Element / Location / Source / Feedback / tags) into the saved image.
-- `jelly/.../output/OutputGenerator.kt` — 1:1 port of the web `generateOutput()` markdown.
-- `jelly/.../storage/AnnotationStore.kt` — DataStore Preferences with 7-day expiry parity.
-- `jelly/.../model/Annotation.kt` — mirrors `package/src/types.ts:5–69`.
+- `jelly/.../output/OutputGenerator.kt` — produces the shared markdown contract, byte-identical to the iOS and web SDKs' `generateOutput()`.
+- `jelly/.../storage/AnnotationStore.kt` — DataStore Preferences with a 7-day expiry, matching the other clients.
+- `jelly/.../model/Annotation.kt` — the annotation schema shared across the iOS, Android, and web clients.
 - `jelly/.../theme/JellyTheme.kt` — internal dark theme (zinc palette) that all SDK overlay UI renders in, regardless of host theme.
 - `sample/` — minimal Compose app for live testing, not published.
 
@@ -56,11 +56,7 @@ This combination means **zero integration code is required for source attributio
 
 Ports cleanly: element identification (semantics tree), bounds, accessibility, output markdown, storage shape, MCP `/sessions` API.
 
-Doesn't port: shadow DOM piercing, CSS class introspection, animation freeze (would require VM-level patching), keyboard shortcuts, design-mode CSS mutation, multi-select drag, drawing strokes. See plan file for full list.
-
-## Source of truth
-
-The full design plan is at `~/.claude/plans/squishy-tinkering-wreath.md`. Read it for context, decisions log, and phasing.
+Doesn't port: shadow DOM piercing, CSS class introspection, animation freeze (would require VM-level patching), keyboard shortcuts, design-mode CSS mutation, multi-select drag, drawing strokes.
 
 ## Phasing
 
@@ -80,6 +76,6 @@ The full design plan is at `~/.claude/plans/squishy-tinkering-wreath.md`. Read i
 
 Or open this folder as a project in Android Studio.
 
-## Web reference
+## Cross-client parity
 
-Cross-references in source code (`package/src/...:NNN`) point at files in the sibling `../jelly` repo. Read those alongside this code when porting new features — the markdown contract and `Annotation` schema are the load-bearing parity points.
+The markdown output contract (`OutputGenerator`) and the `Annotation` schema are the load-bearing parity points shared with the iOS and web Jelly SDKs. Keep them byte-identical when porting new features — the same downstream agents consume the output of all three clients.
