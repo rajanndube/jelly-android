@@ -53,12 +53,15 @@ import dev.jelly.output.OutputGenerator
 import dev.jelly.storage.AnnotationStore
 import dev.jelly.storage.Settings
 import dev.jelly.storage.SettingsStore
+import dev.jelly.sync.DeviceInfo
 import dev.jelly.sync.JellyApi
+import dev.jelly.sync.pushAllAnnotations
 import dev.jelly.theme.JellyTheme
 import dev.jelly.ui.AnnotationMarker
 import dev.jelly.ui.AnnotationPopup
 import dev.jelly.ui.AnnotationToolbar
 import dev.jelly.ui.AnnotationsScreen
+import dev.jelly.ui.CatchUpSyncStatus
 import dev.jelly.ui.LiveHoverOverlay
 import dev.jelly.ui.PopupSubmission
 import dev.jelly.ui.SettingsSheet
@@ -155,7 +158,6 @@ internal fun JellyOverlayContent(
             accentColor = config.accentColor,
             syncEnabled = config.endpoint != null,
             endpoint = config.endpoint,
-            webhookUrl = config.webhookUrl,
         ),
     )
 
@@ -191,6 +193,29 @@ internal fun JellyOverlayContent(
     }
     DisposableEffect(syncApi) {
         onDispose { syncApi?.close() }
+    }
+
+    // Heartbeat to /hello so the local-sync viewer can show device identity +
+    // liveness ("Pixel 7 · Android 14 — connected" vs "Last seen 2m ago").
+    // Tied to syncApi so it auto-cancels when the endpoint changes or sync is
+    // turned off. 12s cadence pairs with the page's 15s manual-probe window
+    // so the refresh button always catches at least one ping on a live device.
+    LaunchedEffect(syncApi) {
+        val api = syncApi ?: return@LaunchedEffect
+        val info = DeviceInfo(
+            platform = "android",
+            model = android.os.Build.MODEL,
+            manufacturer = android.os.Build.MANUFACTURER,
+            osVersion = android.os.Build.VERSION.RELEASE,
+            appName = runCatching {
+                context.applicationInfo.loadLabel(context.packageManager).toString()
+            }.getOrNull(),
+        )
+        while (true) {
+            runCatching { api.sayHello(info) }
+                .onFailure { android.util.Log.w("JellySync", "sayHello heartbeat failed", it) }
+            kotlinx.coroutines.delay(12_000L)
+        }
     }
 
     Box(
@@ -315,10 +340,23 @@ internal fun JellyOverlayContent(
                     screenshotPath = p.screenshotPath,
                     accent = accent,
                     onCancel = {
-                        p.screenshotPath?.let { runCatching { java.io.File(it).delete() } }
+                        // Reference-identity guard: if the popup was already
+                        // dismissed (cancel-then-quick-tap, or recomposition
+                        // double-fire), don't double-delete or stomp on a
+                        // newer pending capture.
+                        if (state.pending !== p) return@AnnotationPopup
                         state.pending = null
+                        p.screenshotPath?.let { runCatching { java.io.File(it).delete() } }
                     },
                     onSubmit = { submission ->
+                        // Same guard, with a critical second purpose: clear
+                        // state.pending BEFORE launching the coroutine so a
+                        // second tap on Submit doesn't kick off a second
+                        // submission for the same PendingCapture. The async
+                        // work below uses `p` captured from the closure, so
+                        // dismissing the popup early is safe.
+                        if (state.pending !== p) return@AnnotationPopup
+                        state.pending = null
                         scope.launch {
                             val bakedPath = p.screenshotPath?.let { rawPath ->
                                 val box = p.captured.bounds
@@ -363,15 +401,28 @@ internal fun JellyOverlayContent(
                                     val sid = state.activeSessionId
                                         ?: api.createSession(url = "screen:$screenKey").id
                                             .also { state.activeSessionId = it }
-                                    api.syncAnnotation(sid, annotation.copy(sessionId = sid))
+                                    val s = api.syncAnnotation(sid, annotation.copy(sessionId = sid))
                                         .copy(syncedTo = sid)
-                                }.getOrNull()
+                                    bakedPath?.let { path ->
+                                        runCatching {
+                                            val file = java.io.File(path)
+                                            if (file.exists()) {
+                                                val ct = if (path.endsWith(".webp", true)) "image/webp" else "image/png"
+                                                api.uploadAnnotationImage(s.id, file.readBytes(), ct)
+                                            }
+                                        }.onFailure {
+                                            android.util.Log.w("JellySync", "image upload failed for id=${s.id}", it)
+                                        }
+                                    }
+                                    s
+                                }
+                                    .onFailure { android.util.Log.w("JellySync", "real-time sync failed for id=${annotation.id}", it) }
+                                    .getOrNull()
                             }
                             val finalAnnotation = synced ?: annotation
                             val updated = annotations + finalAnnotation
                             store.save(screenKey, updated)
                             onAnnotationAdd(finalAnnotation)
-                            state.pending = null
                         }
                     },
                 )
@@ -475,6 +526,23 @@ internal fun JellyOverlayContent(
         }
 
         if (state.settingsOpen) {
+            // Manual-sync state. Recomputed when the sheet opens (and again
+            // after each push) so the count reflects every annotation currently
+            // on the device across all screen keys — re-push uploads them all.
+            var catchUp by remember { mutableStateOf(CatchUpSyncStatus()) }
+            // Full reset on endpoint change. Without this, a "Pushed 5 of 5"
+            // result from the previous endpoint sticks around when the user
+            // pastes a new URL — confusing because that count is no longer
+            // relevant to the new room.
+            LaunchedEffect(persistedSettings.endpoint) {
+                catchUp = CatchUpSyncStatus()
+            }
+            LaunchedEffect(state.settingsOpen, persistedSettings.endpoint, annotations) {
+                if (!state.settingsOpen) return@LaunchedEffect
+                val total = store.enumerateAll().values.sumOf { it.size }
+                catchUp = catchUp.copy(storedCount = total)
+            }
+
             JellyTheme {
                 SettingsSheet(
                     settings = persistedSettings,
@@ -482,6 +550,45 @@ internal fun JellyOverlayContent(
                         scope.launch { settingsStore.update { next } }
                     },
                     onDismiss = { state.settingsOpen = false },
+                    catchUpStatus = catchUp,
+                    onScanQr = {
+                        // Launch the GMS code scanner. On success, replace the
+                        // endpoint with the scanned URL (trimmed of trailing
+                        // slash so /sessions/... requests don't double up) and
+                        // flip Sync on — if you scanned, you obviously want it.
+                        dev.jelly.qr.QrScanner.scan(
+                            context = context,
+                            onResult = { url ->
+                                val clean = url.trim().trimEnd('/')
+                                scope.launch {
+                                    settingsStore.update {
+                                        it.copy(endpoint = clean, syncEnabled = true)
+                                    }
+                                }
+                            },
+                            onError = { /* swallow — user can still type the URL */ },
+                        )
+                    },
+                    onPushPending = {
+                        val api = syncApi ?: return@SettingsSheet
+                        if (catchUp.isPushing) return@SettingsSheet
+                        catchUp = catchUp.copy(isPushing = true, lastResult = null)
+                        scope.launch {
+                            val result = pushAllAnnotations(store, api)
+                            val total = store.enumerateAll().values.sumOf { it.size }
+                            val msg = when {
+                                result.isEmpty -> "No annotations on this device."
+                                result.allSucceeded -> "Pushed ${result.synced} of ${result.attempted}."
+                                result.synced == 0 -> "Couldn't reach endpoint — ${result.failed} failed."
+                                else -> "Pushed ${result.synced}, ${result.failed} failed."
+                            }
+                            catchUp = catchUp.copy(
+                                isPushing = false,
+                                storedCount = total,
+                                lastResult = msg,
+                            )
+                        }
+                    },
                 )
             }
         }
@@ -568,7 +675,6 @@ internal fun JellyToolbarContent(
             accentColor = config.accentColor,
             syncEnabled = config.endpoint != null,
             endpoint = config.endpoint,
-            webhookUrl = config.webhookUrl,
         ),
     )
     val accent = persistedSettings.accentColor.color

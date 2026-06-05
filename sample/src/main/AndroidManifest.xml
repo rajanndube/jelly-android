@@ -1,9 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!--
+      INTERNET — Ktor / OkHttp can't open sockets without it. Required for
+      Jelly Sync regardless of endpoint scheme.
+
+      usesCleartextTraffic — Android 9+ (API 28) blocks http:// by default.
+      The jelly-local-sync viewer serves plain http on localhost / LAN IPs,
+      so host apps that pair with it must permit cleartext or sync calls
+      will fail silently inside OkHttp. RFC1918 ranges can't be CIDR-matched
+      from network_security_config, so for a sample (debug-only flavour)
+      the simplest correct answer is to flip the app-wide flag. Production
+      hosts that ship Jelly via `debugImplementation` should do the same on
+      debug builds only.
+    -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:name=".SampleApp"
         android:label="Jelly Sample"
         android:theme="@style/Theme.JellySample"
+        android:usesCleartextTraffic="true"
         android:allowBackup="false">
         <activity
             android:name=".MainActivity"

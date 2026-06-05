@@ -30,10 +30,12 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -92,18 +94,21 @@ fun AnnotationsScreen(
             dismissOnClickOutside = false,
         ),
     ) {
+        var showClearConfirm by remember { mutableStateOf(false) }
+
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background,
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
+                val hasAnnotations = annotations.isNotEmpty()
                 TopBar(
                     count = annotations.size,
                     accent = accent,
                     onDismiss = onDismiss,
-                    onCopyAll = onCopyAll.takeIf { annotations.isNotEmpty() },
-                    onShareAll = onShareAll.takeIf { annotations.isNotEmpty() },
-                    onClearAll = onClearAll.takeIf { annotations.isNotEmpty() },
+                    onCopyAll = if (hasAnnotations) onCopyAll else null,
+                    onShareAll = if (hasAnnotations) onShareAll else null,
+                    onClearAll = if (hasAnnotations) ({ showClearConfirm = true }) else null,
                 )
                 if (annotations.isEmpty()) {
                     EmptyState()
@@ -125,6 +130,29 @@ fun AnnotationsScreen(
                     }
                 }
             }
+        }
+
+        if (showClearConfirm) {
+            AlertDialog(
+                onDismissRequest = { showClearConfirm = false },
+                title = { Text("Delete all annotations?") },
+                text = { Text("Are you sure you want to delete all the annotations? This action is not reversible.") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            showClearConfirm = false
+                            onClearAll()
+                        },
+                    ) {
+                        Text("Delete all", color = MaterialTheme.colorScheme.error)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showClearConfirm = false }) {
+                        Text("Cancel")
+                    }
+                },
+            )
         }
     }
 }
@@ -366,15 +394,57 @@ private fun NumberBadge(number: Int, accent: Color) {
 
 @Composable
 private fun BakedThumbnail(path: String) {
+    // Decode with `inSampleSize` so a 4000×6000 baked screenshot doesn't land
+    // in the bitmap pool at full resolution. A panel showing 30 annotations
+    // each holding several megabytes of decoded bitmap will OOM on low-end
+    // devices; sub-sampling to ~1000px max dim costs essentially no quality
+    // for the thumbnail view (Image is at most ~screen-width wide) and caps
+    // each card's bitmap memory at a few hundred KB.
+    //
+    // Two-pass decode: first with inJustDecodeBounds to peek dimensions
+    // (allocates no pixels), then sample-size compute, then real decode.
+    // Wrapped in runCatching so a stale path (cache evicted by JellyCacheCleanup,
+    // file deleted by a prior clear-all) returns null cleanly.
+    //
+    // Always exit through the same group so the composable's shape stays
+    // consistent across recompositions — early `return` from a @Composable
+    // corrupts the slot table for the parent LazyColumn item.
     val bitmap = remember(path) {
-        runCatching { BitmapFactory.decodeFile(path) }.getOrNull()
-    } ?: return
-    Image(
-        bitmap = bitmap.asImageBitmap(),
-        contentDescription = "Annotation screenshot",
-        contentScale = ContentScale.Fit,
-        modifier = Modifier.fillMaxSize(),
-    )
+        runCatching {
+            val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+            BitmapFactory.decodeFile(path, bounds)
+            if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return@runCatching null
+            val opts = BitmapFactory.Options().apply {
+                inSampleSize = computeSampleSize(bounds.outWidth, bounds.outHeight, MAX_DIM)
+                inPreferredConfig = android.graphics.Bitmap.Config.RGB_565
+            }
+            BitmapFactory.decodeFile(path, opts)
+        }.getOrNull()
+    }
+    if (bitmap != null) {
+        Image(
+            bitmap = bitmap.asImageBitmap(),
+            contentDescription = "Annotation screenshot",
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+/** Target max dimension for thumbnail decode. Picked to match a wide phone in
+ *  landscape — anything past this is wasted pixels at thumbnail size. */
+private const val MAX_DIM = 1080
+
+private fun computeSampleSize(srcW: Int, srcH: Int, maxDim: Int): Int {
+    var sample = 1
+    var w = srcW
+    var h = srcH
+    while (w / 2 >= maxDim || h / 2 >= maxDim) {
+        sample *= 2
+        w /= 2
+        h /= 2
+    }
+    return sample
 }
 
 @Composable

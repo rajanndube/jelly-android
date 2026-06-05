@@ -1,7 +1,6 @@
 package dev.jelly.ui
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -71,12 +70,7 @@ fun AnnotationToolbar(
     var expanded by remember { mutableStateOf(false) }
 
     Surface(
-        modifier = modifier.animateContentSize(
-            animationSpec = tween(
-                durationMillis = JellyMotion.PopupMs,
-                easing = JellyMotion.EaseOut,
-            ),
-        ),
+        modifier = modifier,
         shape = RoundedCornerShape(percent = 50),
         color = MaterialTheme.colorScheme.surface,
         // Soft shadow — on dark theme the dark surface against the host
@@ -101,6 +95,15 @@ fun AnnotationToolbar(
                 },
             )
 
+            // GPU-only reveal — fade + scale, never an animated *measured size*.
+            // This toolbar is the sole child of a WRAP_CONTENT WindowManager
+            // window (see ActivityOverlayController). Any per-frame layout-size
+            // change (animateContentSize / expandHorizontally) forces the window
+            // to relayout its surface every frame via a system-server IPC, which
+            // reads as a stutter. scaleIn/fadeIn run purely on the graphics layer,
+            // so the window resizes exactly once (when the actions appear at full
+            // measured size) and the reveal itself is composited — smooth.
+            // Anchored to the start edge so the actions scale out of the pin chip.
             AnimatedVisibility(
                 visible = expanded,
                 enter = fadeIn(

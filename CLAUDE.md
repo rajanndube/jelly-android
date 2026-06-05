@@ -18,7 +18,7 @@ setContent {
 }
 ```
 
-Add `debugImplementation("com.rajandube:jelly:0.1.0")` (or `qaImplementation` for a QA flavor) to gate it to non-release builds. No per-screen `Modifier.testTag` plumbing required — the library hits the semantics tree at long-press time.
+Add `debugImplementation("com.rajandube:jelly:0.2.0")` (or `qaImplementation` for a QA flavor) to gate it to non-release builds. No per-screen `Modifier.testTag` plumbing required — the library hits the semantics tree at long-press time.
 
 ## Architecture (key files)
 

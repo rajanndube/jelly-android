@@ -26,6 +26,11 @@ android {
         compose = true
     }
 
+    // Same AGP 8.7 lint detector crash as the library — see jelly/build.gradle.kts.
+    lint {
+        disable += "NullSafeMutableLiveData"
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -51,5 +56,7 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.compose.material.icons.extended)
+    implementation(libs.androidx.navigation.compose)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }

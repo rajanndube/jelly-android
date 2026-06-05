@@ -16,6 +16,7 @@ import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModelStoreOwner
+import androidx.lifecycle.findViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistryOwner
@@ -86,6 +87,17 @@ internal class ActivityOverlayController(
 
     private fun attach(activity: Activity) {
         if (attached.containsKey(activity)) return
+        // Skip activities whose decor view isn't Compose-ready. The signal
+        // we need is `ViewTreeLifecycleOwner` being set on the decor view —
+        // ComposeView requires it at attach time and otherwise crashes with
+        // "ViewTreeLifecycleOwner not found". A class-name check (e.g.
+        // `is ComponentActivity`) is NOT sufficient: Play Services'
+        // GmsBarcodeScanningDelegateActivity, launched when QA taps Scan QR,
+        // is itself a ComponentActivity but never calls setContentView (it
+        // dispatches an intent and finishes), so its decor view never gets
+        // the lifecycle owner wired. We check the owner directly so any
+        // delegate-style activity is filtered out regardless of supertype.
+        if (activity.window?.decorView?.findViewTreeLifecycleOwner() == null) return
         val decor = activity.window?.decorView as? ViewGroup ?: return
 
         val state = JellyOverlayState()
@@ -228,13 +240,32 @@ internal class ActivityOverlayController(
     private fun bumpToolbarToTop(activity: Activity, attachment: AttachedActivity) {
         if (!attachment.attachedToWindowManager) return
         if (activity.isFinishing || activity.isDestroyed) return
+        // Skip the bump when *our own* settings / review sheet is what stole
+        // focus. The bump exists to keep the FAB above the **host app's**
+        // dialogs; for our own modal sheets the FAB doesn't need to float over
+        // them (they have their own dismiss). Critically, the bump is a
+        // remove + re-add that disposes and re-composes the whole toolbar
+        // (see the DisposeOnDetached composition strategy) — running that on
+        // the frame our ModalBottomSheet starts animating is what made the
+        // sheet's slide-up stutter. Skipping it here keeps that animation on a
+        // clear main thread.
+        if (attachment.state.settingsOpen || attachment.state.reviewOpen) return
+        // Coalesce overlapping bumps: focus events can land in rapid pairs
+        // (dialog dismiss + activity refocus) and queuing a second remove/add
+        // while the first is mid-flight crashes WindowManager.
+        if (attachment.isBumping) return
+        attachment.isBumping = true
         attachment.toolbarView.post {
-            if (!attachment.attachedToWindowManager) return@post
-            if (activity.isFinishing || activity.isDestroyed) return@post
-            runCatching {
-                val wm = activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager
-                wm.removeViewImmediate(attachment.toolbarView)
-                wm.addView(attachment.toolbarView, attachment.toolbarParams)
+            try {
+                if (!attachment.attachedToWindowManager) return@post
+                if (activity.isFinishing || activity.isDestroyed) return@post
+                runCatching {
+                    val wm = activity.getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                    wm.removeViewImmediate(attachment.toolbarView)
+                    wm.addView(attachment.toolbarView, attachment.toolbarParams)
+                }
+            } finally {
+                attachment.isBumping = false
             }
         }
     }
@@ -368,5 +399,11 @@ internal class ActivityOverlayController(
         val toolbarView: ComposeView,
         val toolbarParams: WindowManager.LayoutParams,
         var attachedToWindowManager: Boolean = false,
+        // Guards against a re-entrant bump during the posted runnable's window
+        // — rapid focus changes (e.g. dismissing one dialog while another is
+        // opening) can queue multiple bumps. Letting both fire would
+        // remove-then-add-then-remove-then-add and crash WindowManager with a
+        // BadTokenException on the second add.
+        var isBumping: Boolean = false,
     )
 }

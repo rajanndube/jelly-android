@@ -6,6 +6,7 @@ import dev.jelly.model.SessionWithAnnotations
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.request.delete
 import io.ktor.client.request.get
@@ -67,6 +68,37 @@ class JellyApi(
             setBody(ActionRequest(output))
         }.requireOk().body()
 
+    /**
+     * Upload the baked screenshot bytes for an annotation. Used by the local-sync
+     * viewer so a paired browser can render the image alongside the markdown.
+     * No-op on backends that don't implement this endpoint — callers should wrap
+     * in runCatching since older servers respond 404.
+     */
+    suspend fun uploadAnnotationImage(
+        annotationId: String,
+        bytes: ByteArray,
+        contentType: String = "image/png",
+    ) {
+        client.post("$endpoint/annotations/$annotationId/image") {
+            contentType(ContentType.parse(contentType))
+            setBody(bytes)
+        }.requireOk()
+    }
+
+    /**
+     * Identify this device + heartbeat. Used by the local-sync viewer to show
+     * "Pixel 7 · Android 14 — connected" instead of a generic "listening" label.
+     * Called periodically while sync is enabled; stale silence on the page side
+     * implies the SDK has gone away. Hosted MCP servers typically 404 this and
+     * that's fine — callers wrap in runCatching.
+     */
+    suspend fun sayHello(info: DeviceInfo) {
+        client.post("$endpoint/hello") {
+            contentType(ContentType.Application.Json)
+            setBody(info)
+        }.requireOk()
+    }
+
     fun close() = client.close()
 
     @Serializable
@@ -104,8 +136,33 @@ class JellyApi(
                     encodeDefaults = false
                 })
             }
+            // Without these, a hung MCP server or a stalled image upload can
+            // block the sync coroutine indefinitely. We keep generous values
+            // since image uploads over ADB tunnel can legitimately take a few
+            // seconds, but anything past a minute is dead.
+            install(HttpTimeout) {
+                connectTimeoutMillis = 15_000
+                socketTimeoutMillis = 30_000
+                requestTimeoutMillis = 60_000
+            }
         }
     }
 }
 
 class JellyApiException(val statusCode: Int, message: String) : RuntimeException(message)
+
+/**
+ * Wire shape for [JellyApi.sayHello]. Mirrors what the local-sync server reads
+ * to render the "which device is connected" indicator on the page. All fields
+ * except [platform] are optional — hosted MCP servers may not care, and we
+ * don't want a missing field to break the heartbeat.
+ */
+@Serializable
+data class DeviceInfo(
+    val platform: String,
+    val model: String? = null,
+    val manufacturer: String? = null,
+    val osVersion: String? = null,
+    val appName: String? = null,
+    val sdkVersion: String? = null,
+)

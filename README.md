@@ -10,7 +10,7 @@ A debug-only QA-annotation toolbar for Android Compose apps. Long-press any elem
 
 Jelly for Android is the native Kotlin / Jetpack Compose member of the Jelly family, alongside the [iOS](https://github.com/rajanndube/jelly-swift) and web SDKs. The output markdown contract and `/sessions` API are byte-identical across all three clients, so the same downstream agents work everywhere.
 
-> **Published on Maven Central:** `com.rajandube:jelly:0.1.0`. [Browse on Sonatype](https://central.sonatype.com/artifact/com.rajandube/jelly) or the [direct repository listing](https://repo1.maven.org/maven2/com/rajandube/jelly/).
+> **Published on Maven Central:** `com.rajandube:jelly:0.2.0`. [Browse on Sonatype](https://central.sonatype.com/artifact/com.rajandube/jelly) or the [direct repository listing](https://repo1.maven.org/maven2/com/rajandube/jelly/).
 
 ```
 ┌─────────────────────────────┐
@@ -61,7 +61,7 @@ In the app module's `build.gradle.kts` (or `<module>.gradle.kts` if the project 
 
 ```kotlin
 dependencies {
-    debugImplementation("com.rajandube:jelly:0.1.0")
+    debugImplementation("com.rajandube:jelly:0.2.0")
 }
 ```
 
@@ -176,7 +176,6 @@ JellyConfig(
     accentColor = AccentColor.Indigo,          // 7 colors available
     endpoint = "https://your-mcp.example.com", // optional MCP /sessions sync
     sessionId = null,                          // resume a known session
-    webhookUrl = null,                         // optional outbound webhook
     copyToClipboard = true,
     captureScreenshots = true,
     screenKey = null,                          // override the per-activity storage key

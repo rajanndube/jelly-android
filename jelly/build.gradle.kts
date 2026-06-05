@@ -16,7 +16,7 @@ plugins {
 // package means consumers' import lines stay short while the Maven
 // coordinate matches the publisher's namespace.
 group = "com.rajandube"
-version = "0.1.0"
+version = "0.2.0"
 
 android {
     namespace = "dev.jelly"
@@ -63,6 +63,17 @@ android {
         compose = true
     }
 
+    // AGP 8.7's bundled lint ships a `NonNullableMutableLiveDataDetector`
+    // that crashes against Kotlin 2.1's Analysis API ("Found class
+    // KaCallableMemberCall, but interface was expected"). The detector
+    // isn't relevant to this library (no LiveData) — disabling it lets
+    // lintVitalAnalyzeRelease finish, which is what publishToMavenCentral
+    // gates on. Revisit when we upgrade AGP to a version with a compatible
+    // lint analyzer.
+    lint {
+        disable += "NullSafeMutableLiveData"
+    }
+
     sourceSets {
         getByName("main") {
             kotlin.srcDir("src/main/kotlin")
@@ -87,6 +98,13 @@ dependencies {
     implementation(libs.ktor.client.okhttp)
     implementation(libs.ktor.client.content.negotiation)
     implementation(libs.ktor.serialization.kotlinx.json)
+
+    // Play Services Code Scanner — backs the settings sheet's "Scan QR" button
+    // for pairing with jelly-local-sync. UI runs out-of-process inside Play
+    // Services, so consumers don't need to declare a CAMERA permission in
+    // their manifest. Failures (no Play Services, user cancellation) are
+    // swallowed at the call site so the user can still paste the URL.
+    implementation(libs.play.services.code.scanner)
 
     // ui-tooling brings the inspectable node tree the SDK's Compose
     // previews use during development. ui-tooling-data (slot tree) is

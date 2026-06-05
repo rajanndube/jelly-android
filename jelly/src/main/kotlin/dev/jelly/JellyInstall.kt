@@ -43,6 +43,10 @@ object Jelly {
         config: JellyConfig = JellyConfig(),
     ) {
         if (controller != null) return
+        // Trim the screenshot cache once per process start so it can't grow
+        // unbounded across QA sessions. Cheap; runs on the main thread but
+        // only touches a single directory under cacheDir.
+        dev.jelly.capture.JellyCacheCleanup.trim(application)
         val ctrl = ActivityOverlayController(config)
         application.registerActivityLifecycleCallbacks(ctrl)
         controller = ctrl

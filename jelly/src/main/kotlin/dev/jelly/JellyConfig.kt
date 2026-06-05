@@ -8,7 +8,6 @@ data class JellyConfig(
     val accentColor: AccentColor = AccentColor.Indigo,
     val endpoint: String? = null,
     val sessionId: String? = null,
-    val webhookUrl: String? = null,
     val copyToClipboard: Boolean = true,
     val captureScreenshots: Boolean = true,
     /**

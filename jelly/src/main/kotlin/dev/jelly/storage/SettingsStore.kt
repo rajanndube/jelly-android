@@ -21,7 +21,6 @@ class SettingsStore(private val context: Context) {
         val AccentColorKey = stringPreferencesKey("settings.accentColor")
         val SyncEnabledKey = booleanPreferencesKey("settings.syncEnabled")
         val EndpointKey = stringPreferencesKey("settings.endpoint")
-        val WebhookKey = stringPreferencesKey("settings.webhookUrl")
     }
 
     val settings: Flow<Settings> = context.dataStore.data.map { prefs ->
@@ -32,7 +31,6 @@ class SettingsStore(private val context: Context) {
                 ?: AccentColor.Indigo,
             syncEnabled = prefs[Keys.SyncEnabledKey] ?: false,
             endpoint = prefs[Keys.EndpointKey],
-            webhookUrl = prefs[Keys.WebhookKey],
         )
     }
 
@@ -45,7 +43,6 @@ class SettingsStore(private val context: Context) {
                     ?: AccentColor.Indigo,
                 syncEnabled = prefs[Keys.SyncEnabledKey] ?: false,
                 endpoint = prefs[Keys.EndpointKey],
-                webhookUrl = prefs[Keys.WebhookKey],
             )
             val next = transform(current)
             prefs[Keys.DetailLevelKey] = next.detailLevel.name
@@ -53,8 +50,6 @@ class SettingsStore(private val context: Context) {
             prefs[Keys.SyncEnabledKey] = next.syncEnabled
             next.endpoint?.let { prefs[Keys.EndpointKey] = it }
                 ?: prefs.remove(Keys.EndpointKey)
-            next.webhookUrl?.let { prefs[Keys.WebhookKey] = it }
-                ?: prefs.remove(Keys.WebhookKey)
         }
     }
 }
@@ -64,5 +59,4 @@ data class Settings(
     val accentColor: AccentColor = AccentColor.Indigo,
     val syncEnabled: Boolean = false,
     val endpoint: String? = null,
-    val webhookUrl: String? = null,
 )
