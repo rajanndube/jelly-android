@@ -39,12 +39,25 @@ The sample app under `sample/` is a minimal Compose host for live testing; insta
 ./gradlew :sample:installDebug
 ```
 
+## Licensing & sign-off (DCO)
+
+This project is **source-available under the [PolyForm Shield 1.0.0](LICENSE) license**, free to use, modify, and distribute, but not to build a competing product. By contributing, you agree your contribution is licensed under those same terms.
+
+Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/) (DCO), a lightweight, sign-off-based alternative to a CLA. It is a statement that you wrote the patch (or otherwise have the right to submit it). To sign off, add a `Signed-off-by` trailer to each commit:
+
+```bash
+git commit -s -m "your message"
+```
+
+This appends `Signed-off-by: Your Name <you@example.com>` using your `git config user.name` / `user.email`. PRs whose commits aren't signed off will be asked to amend (`git rebase --signoff main` fixes a whole branch).
+
 ## Before you open a PR
 
 1. `./gradlew :jelly:assembleDebug :sample:assembleDebug` is green.
 2. Code matches the surrounding style (naming, comment density, idiom).
 3. Anything touching `OutputGenerator` keeps the markdown byte-identical to the iOS / web reference (see Ground rules).
 4. Update [`CHANGELOG.md`](CHANGELOG.md) under the "Unreleased" heading if your change is user-facing.
+5. Sign off your commits (`git commit -s`, see above).
 
 ## Architecture
 
