@@ -185,8 +185,8 @@ mavenPublishing {
 
         licenses {
             license {
-                name.set("MIT License")
-                url.set("https://opensource.org/licenses/MIT")
+                name.set("PolyForm Shield License 1.0.0")
+                url.set("https://polyformproject.org/licenses/shield/1.0.0")
                 distribution.set("repo")
             }
         }

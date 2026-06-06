@@ -4,7 +4,7 @@
 [![API](https://img.shields.io/badge/API-26%2B-brightgreen.svg)](#prerequisites)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.1.0-blue.svg)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202025.12-4285F4.svg)](https://developer.android.com/jetpack/compose)
-[![License](https://img.shields.io/github/license/rajanndube/jelly-android)](LICENSE)
+[![License](https://img.shields.io/badge/license-PolyForm%20Shield%201.0.0-blue.svg)](LICENSE)
 
 A debug-only QA-annotation toolbar for Android Compose apps. Long-press any element on screen, drop a comment, and share to Slack, the clipboard, or your MCP server as structured markdown plus a baked image.
 
@@ -269,4 +269,12 @@ To publish a new version: bump `version` in [`jelly/build.gradle.kts`](jelly/bui
 
 `v0.6`: Application-level install pattern, draggable FAB with edge-snap, two-window architecture (capture overlay in decor view plus toolbar in `TYPE_APPLICATION_PANEL` window), View and Compose multi-paradigm hit-testing, slot-tree fallback for sparse-semantics apps, baked share images.
 
-See [`CLAUDE.md`](CLAUDE.md) for repo-internal architecture notes, and [`CHANGELOG.md`](CHANGELOG.md) for the release history. Contributions are welcome — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+See [`CLAUDE.md`](CLAUDE.md) for repo-internal architecture notes, and [`CHANGELOG.md`](CHANGELOG.md) for the release history. Contributions are welcome, see [`CONTRIBUTING.md`](CONTRIBUTING.md).
+
+---
+
+## License
+
+[PolyForm Shield 1.0.0](LICENSE), source-available. You may use, modify, and distribute it freely, **except** to build a product that competes with Jelly. This is not an OSI "open source" license; it is a deliberate anti-compete stance. See [LICENSE](LICENSE) for the exact terms.
+
+Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/). Sign off your commits with `git commit -s`. See [CONTRIBUTING.md](CONTRIBUTING.md).
