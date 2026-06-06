@@ -5,10 +5,12 @@ All notable changes to the Jelly Android SDK are documented here. This project a
 ## [Unreleased]
 
 ### Changed
-- **Relicensed from MIT to [PolyForm Shield 1.0.0](LICENSE).** Source-available: use, modify, and distribute freely, but not to build a product that competes with Jelly. This is not an OSI "open source" license. The published POM `<licenses>` block is updated to match.
+- **Relicensed from MIT to [PolyForm Shield 1.0.0](LICENSE.md).** Source-available: use, modify, and distribute freely, but not to build a product that competes with Jelly. This is not an OSI "open source" license. The published POM `<licenses>` block is updated to match.
 
 ### Added
 - **DCO sign-off requirement.** Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/); sign off commits with `git commit -s`. A self-contained `.github/workflows/dco.yml` verifies a matching `Signed-off-by` trailer on every non-merge commit in a PR.
+- **`SECURITY.md`** documenting the debug-only threat model, sync egress scope, and private vulnerability reporting, matching the iOS and web clients.
+- **`CODE_OF_CONDUCT.md`** (Contributor Covenant 2.1), matching the iOS and web clients.
 
 ## [0.2.0] — 2026-06-05
 

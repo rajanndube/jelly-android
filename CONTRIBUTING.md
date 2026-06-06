@@ -41,7 +41,7 @@ The sample app under `sample/` is a minimal Compose host for live testing; insta
 
 ## Licensing & sign-off (DCO)
 
-This project is **source-available under the [PolyForm Shield 1.0.0](LICENSE) license**, free to use, modify, and distribute, but not to build a competing product. By contributing, you agree your contribution is licensed under those same terms.
+This project is **source-available under the [PolyForm Shield 1.0.0](LICENSE.md) license**, free to use, modify, and distribute, but not to build a competing product. By contributing, you agree your contribution is licensed under those same terms.
 
 Contributions are accepted under the [Developer Certificate of Origin](https://developercertificate.org/) (DCO), a lightweight, sign-off-based alternative to a CLA. It is a statement that you wrote the patch (or otherwise have the right to submit it). To sign off, add a `Signed-off-by` trailer to each commit:
 
